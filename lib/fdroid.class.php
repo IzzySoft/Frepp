@@ -278,16 +278,30 @@ class fdroid extends xmlconv {
    *  or any other sophisticated stuff for now.
    * @method searchApps
    * @param string keyword Keyword/String to search for
+   * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  public function searchApps($keyword) {
+  public function searchApps($keyword,$start=0,$limit=null) {
     if ( !$this->ftsEnabled ) return array(); // not indexed, no search
     if ( empty($this->ftsIndex) ) $this->index();
+    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit==0 ) $max = $this->appcount;
+    else $max = $start + $limit;
     $keyword = strtolower($keyword);
     $apps = [];
+    $i=0;
     foreach ($this->ftsIndex as $key=>$val) {
-      if (strpos($val,$keyword)!==false) $apps[] = $this->data->application[$key];
+      if ( $i==$max || $i==$this->appcount ) break;
+      if (strpos($val,$keyword)!==false) {
+        if ( $i<$start ) {
+          ++$i;
+          continue;
+        }
+        $apps[] = $this->data->application[$key];
+        ++$i;
+      }
     }
     return $apps;
   }
