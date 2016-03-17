@@ -252,7 +252,7 @@ class fdroid extends xmlconv {
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  function searchApps($keyword) {
+  public function searchApps($keyword) {
     if ( !$this->ftsEnabled ) return array(); // not indexed, no search
     if ( empty($this->ftsIndex) ) $this->index();
     $keyword = strtolower($keyword);
@@ -263,13 +263,34 @@ class fdroid extends xmlconv {
     return $apps;
   }
 
+  /** Intersecting two app lists (returning only apps present in both).
+   *  This can be used to select apps meeting multiple criteria, e.g.
+   *  fdroid->intersect(fdroid->searchApps('foobar'),fdroid->getAppsByCat('System'))
+   *  would only return apps from the System category mentioning 'foobar'.
+   * @method intersect
+   * @param array apps1
+   * @param array apps2
+   * @return array apps array[0..n] of object app
+   * @see getAppList
+   */
+  public function intersect($arr1,$arr2) {
+    if ( empty($arr1) || empty($arr2) ) return [];
+    $apps = [];
+    foreach($arr1 as $a) {
+      foreach($arr2 as $b) {
+        if ( $a->id == $b->id ) $apps[] = $a;
+      }
+    }
+    return $apps;
+  }
+
   /** Get data for an app by its package_name
    * @method getAppById
    * @param string id package_name
    * @return object app
    * @see getAppList
    */
-  function getAppById($id) {
+  public function getAppById($id) {
     if ( empty($this->appIds) ) $this->index();
     if ( !isset($this->data->application[$this->appIds[$id]]) ) return new stdClass();
     return $this->data->application[$this->appIds[$id]];
@@ -281,7 +302,7 @@ class fdroid extends xmlconv {
    * @return object app
    * @see getAppList
    */
-  function getAppByName($id) {
+  public function getAppByName($id) {
     if ( empty($this->appIds) ) $this->index();
     if ( !isset($this->data->application[$this->appNames[$id]]) ) return new stdClass();
     return $this->data->application[$this->appNames[$id]];
