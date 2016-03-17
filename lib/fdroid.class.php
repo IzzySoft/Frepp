@@ -70,17 +70,41 @@ class fdroid extends xmlconv {
    */
   protected $appcount;
 
+  /** Default limit for pager (how many entries to return at maximum)
+   * @attribute pprotected pager
+   */
+  protected $limit = 0;
+
   /** Constructor: Load the repo
    * @constructor fdroid
    * @param string dir the repository's dir (where the index.xml resides)
    */
-  public function __construct($dir) {
+  public function __construct($dir, $limit=0) {
     $this->repoDir = $dir;
     $this->data = $this->xml2obj($dir.'/index.xml');
     $this->cats = explode("\n",trim(file_get_contents($dir.'/categories.txt')));
     sort($this->cats);
     $this->data->repo->{'@attributes'}->appcount = count($this->data->application);
     $this->appcount = $this->data->repo->{'@attributes'}->appcount;
+    $this->setLimit($limit);
+  }
+
+  /** Set the default pager limit
+   * @method public setLimit
+   * @param opt int limit value to set the limit to (default: 0, i.e. no limit)
+   * @see limit
+   */
+  public function setLimit($limit=0) {
+    (int) $limit;
+    if ( is_int($limit) ) $this->limit = abs($limit);
+  }
+
+  /** Get the default pager limit
+   * @method public getLimit
+   * @see limit
+   */
+  public function getLimit($limit=0) {
+    return $this->limit;
   }
 
   /** Enable/Disable index for Full Text Search.
@@ -137,8 +161,8 @@ class fdroid extends xmlconv {
 
   /** Get the entire applist as-is (i.e. ordered by names)
    * @method getAppList
-   * @param optional int limit how many apps to return. Default is to return all (limit=NULL).
    * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
    * @return array apps array[0..n] of object app
    * @verbatim
    *   each app with:  id (package_name), added (date), lastupdated (date), name (app_name), summary, icon, desc, license,
@@ -150,9 +174,10 @@ class fdroid extends xmlconv {
    *                   permissions (CSV), nativecode (CSV), features (CSV)
    *                   → added, lastupdated: relates to the repo – no details of the file date (need to take that from files)
    */
-  function getAppList($limit=null,$start=0) {
-    if ( $limit==null && $start==0 ) return $this->data->application;
-    if ( $limit==null ) $max = $this->appcount;
+  function getAppList($start=0,$limit=null) {
+    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit==0 && $start==0 ) return $this->data->application;
+    if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
     $apps = [];
     for ($i=$start;$i<=$max;++$i) {
@@ -165,15 +190,16 @@ class fdroid extends xmlconv {
   /** Get all apps of a given category
    * @method getAppsByCat
    * @param str cat category
-   * @param optional int limit how many apps to return. Default is to return all (limit=NULL).
    * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  function getAppsByCat($cat,$limit=null,$start=0) {
+  function getAppsByCat($cat,$start=0,$limit=null) {
     if ( !in_array($cat,$this->cats) ) return array();
     if ( empty($this->appIds) ) $this->index();
-    if ( $limit==null ) $max = count($this->appCats[$cat]);
+    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit==0 ) $max = count($this->appCats[$cat]);
     else $max = $start + $limit;
     $apps = [];
     for ($i=$start;$i<=$max;++$i) {
@@ -211,36 +237,39 @@ class fdroid extends xmlconv {
   /** Get all apps build on a given date or later
    * @method getAppsBuildSince
    * @param str date 'YYYY-MM-DD'
-   * @param optional int limit how many apps to return. Default is to return all (limit=NULL).
    * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  public function getAppsBuildSince($date,$limit=null,$start=0) {
+  public function getAppsBuildSince($date,$start=0,$limit=null) {
+    if ( $limit==null ) $limit = $this->limit;
     return $this->filterDateRange($date,$limit,$start,$this->appBuilds);
   }
 
   /** Get all apps added to the repo on a given date or later
    * @method getAppsAddedSince
    * @param str date 'YYYY-MM-DD'
-   * @param optional int limit how many apps to return. Default is to return all (limit=NULL).
    * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  public function getAppsAddedSince($date,$limit=null,$start=0) {
+  public function getAppsAddedSince($date,$start=0,$limit=null) {
+    if ( $limit==null ) $limit = $this->limit;
     return $this->filterDateRange($date,$limit,$start,$this->appAddeds);
   }
 
   /** Get all apps whos repo entry was updated on a given date or later
    * @method getAppsUpdatedSince
    * @param str date 'YYYY-MM-DD'
-   * @param optional int limit how many apps to return. Default is to return all (limit=NULL).
    * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  public function getAppsUpdatedSince($date,$limit=null,$start=0) {
+  public function getAppsUpdatedSince($date,$start=0,$limit=null) {
+    if ( $limit==null ) $limit = $this->limit;
     return $this->filterDateRange($date,$limit,$start,$this->appUpdates);
   }
 
