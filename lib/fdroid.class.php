@@ -119,10 +119,12 @@ class fdroid extends xmlconv {
 
   /** Get the repository meta data
    * @method getMeta
-   * @return object metaData. properties: strings icon (fileName), name, pubkey, timestamp, url, version, appcount
+   * @return object metaData. properties: strings icon (fileName), name, pubkey, timestamp, url, version, int appcount, str description
    */
   public function getMeta() {
-    return $this->data->repo->{'@attributes'};
+    $meta = $this->data->repo->{'@attributes'};
+    $meta->description = $this->data->repo->description;
+    return $meta;
   }
 
   /** Get used categories
@@ -175,7 +177,7 @@ class fdroid extends xmlconv {
    *                   → added, lastupdated: relates to the repo – no details of the file date (need to take that from files)
    */
   function getAppList($start=0,$limit=null) {
-    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit===null ) $limit = $this->limit;
     if ( $limit==0 && $start==0 ) return $this->data->application;
     if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
@@ -198,7 +200,7 @@ class fdroid extends xmlconv {
   function getAppsByCat($cat,$start=0,$limit=null) {
     if ( !in_array($cat,$this->cats) ) return array();
     if ( empty($this->appIds) ) $this->index();
-    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit===null ) $limit = $this->limit;
     if ( $limit==0 ) $max = count($this->appCats[$cat]);
     else $max = $start + $limit;
     $apps = [];
@@ -218,7 +220,7 @@ class fdroid extends xmlconv {
    */
   protected function filterDateRange($date,$limit,$start,&$list) {
     if ( empty($this->appIds) ) $this->index();
-    if ( $limit==null ) $max = $this->appcount;
+    if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
     $i = 0;
     $apps = [];
@@ -243,7 +245,7 @@ class fdroid extends xmlconv {
    * @see getAppList
    */
   public function getAppsBuildSince($date,$start=0,$limit=null) {
-    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit===null ) $limit = $this->limit;
     return $this->filterDateRange($date,$limit,$start,$this->appBuilds);
   }
 
@@ -256,7 +258,7 @@ class fdroid extends xmlconv {
    * @see getAppList
    */
   public function getAppsAddedSince($date,$start=0,$limit=null) {
-    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit===null ) $limit = $this->limit;
     return $this->filterDateRange($date,$limit,$start,$this->appAddeds);
   }
 
@@ -269,7 +271,7 @@ class fdroid extends xmlconv {
    * @see getAppList
    */
   public function getAppsUpdatedSince($date,$start=0,$limit=null) {
-    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit===null ) $limit = $this->limit;
     return $this->filterDateRange($date,$limit,$start,$this->appUpdates);
   }
 
@@ -286,7 +288,7 @@ class fdroid extends xmlconv {
   public function searchApps($keyword,$start=0,$limit=null) {
     if ( !$this->ftsEnabled ) return array(); // not indexed, no search
     if ( empty($this->ftsIndex) ) $this->index();
-    if ( $limit==null ) $limit = $this->limit;
+    if ( $limit===null ) $limit = $this->limit;
     if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
     $keyword = strtolower($keyword);
