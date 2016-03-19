@@ -241,7 +241,7 @@ class fdroid extends xmlconv {
         if ( $i>$max ) break 2;
         $apps[] = $this->data->application[$b];
       }
-      else break;
+      else continue;
     }
     return $apps;
   }
