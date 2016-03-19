@@ -3,6 +3,9 @@ require_once('xmlconv.class.php');
 
 /** Handle F-Droid repositories
  * @class fdroid extends xmlconv
+ * @author Andreas Itzchak Rehberg
+ * @copyright © 2016 by Andreas Itzchak Rehberg, protected under the GPLv2
+ * @webpage https://github.com/IzzySoft/prepaf
  */
 class fdroid extends xmlconv {
 
@@ -77,6 +80,7 @@ class fdroid extends xmlconv {
 
   /** Constructor: Load the repo
    * @constructor fdroid
+   * @param optional int limit how many apps to return. This sets the default used by the apps.
    * @param string dir the repository's dir (where the index.xml resides)
    */
   public function __construct($dir, $limit=0) {
@@ -113,7 +117,7 @@ class fdroid extends xmlconv {
    * @method setFTS
    * @param bool value TRUE to activate, FALSE to deactivate
    */
-  function setFTS($val) {
+  public function setFTS($val) {
     $this->ftsEnabled = (bool) $val;
   }
 
@@ -148,8 +152,13 @@ class fdroid extends xmlconv {
         $this->appCats[$ac][] = $key;
       }
       // now walk get the last modification (i.e. "app update") of the newest file
-      if ( is_array($app->package) ) $this->data->application[$key]->lastbuild = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package[0]->apkname));
-      else $this->data->application[$key]->lastbuild = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package->apkname));
+      if ( is_array($app->package) ) {
+        for($i=0;$i<count($app->package);++$i) $this->data->application[$key]->package[$i]->built = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package[$i]->apkname));
+        $this->data->application[$key]->lastbuild = $app->package[0]->built;
+      } else {
+        $this->data->application[$key]->lastbuild = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package->apkname));
+        $this->data->application[$key]->package->built = $this->data->application[$key]->lastbuild;
+      }
       if ( !isset($this->appBuilds[$app->lastbuild]) ) $this->appBuilds[$app->lastbuild] = [];
       $this->appBuilds[$app->lastbuild][] = $key;
       if ( !isset($this->appAddeds[$app->added]) ) $this->appAddeds[$app->added] = [];
@@ -214,8 +223,9 @@ class fdroid extends xmlconv {
   /** Helper to filter app by dates with pager-limit
    * @method protected filterDateRange
    * @param str date 'YYYY-MM-DD'
-   * @param optional int limit how many apps to return. Default is to return all (limit=NULL).
-   * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param int limit how many apps to return. Default is to return all (limit=NULL).
+   * @param int start position to start with when paging. Default is 0 (the first app).
+   * @param ref array list appList to filter
    * @return array apps array[0..n] of object app
    */
   protected function filterDateRange($date,$limit,$start,&$list) {
