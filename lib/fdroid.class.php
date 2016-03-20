@@ -45,22 +45,27 @@ class fdroid extends xmlconv {
    *  This is an empty array unless explicitly filled by self::index
    * @attribute appNames
    */
-  protected $appBuilds = [];
+  protected $appNames = [];
   /** app_lastbuild and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
    * @attribute appBuilds
    */
-  protected $appAddeds = [];
-  /** app_lastbuild and their index key in data->application.
+  protected $appBuilds = [];
+  /** app_repoAdded and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
    * @attribute appAddeds
    */
-  protected $appUpdates = [];
-  /** app_lastbuild and their index key in data->application.
+  protected $appAddeds = [];
+  /** app_repoUpdate and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
    * @attribute appUpdates
    */
-  protected $appNames = [];
+  protected $appUpdates = [];
+  /** app_authors and their index key in data->application.
+   *  This is an empty array unless explicitly filled by self::index
+   * @attribute protected autNames
+   */
+  protected $autNames = [];
   /** categories with the index keys of apps (in data->application) being in them.
    *  This is an empty array unless explicitly filled by self::index
    * @attribute appCats
@@ -151,6 +156,10 @@ class fdroid extends xmlconv {
         if ( !isset($this->appCats[$ac])) $this->appCats[$ac] = [];
         $this->appCats[$ac][] = $key;
       }
+      if ( isset($app->author) ) {
+        if ( !isset($this->autNames[$app->author]) ) $this->autNames[$app->author] = [];
+        $this->autNames[$app->author][] = $key;
+      }
       // now walk get the last modification (i.e. "app update") of the newest file
       if ( is_array($app->package) ) {
         for($i=0;$i<count($app->package);++$i) $this->data->application[$key]->package[$i]->built = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package[$i]->apkname));
@@ -216,6 +225,28 @@ class fdroid extends xmlconv {
     for ($i=$start;$i<=$max;++$i) {
       if ( $i==$max || !isset($this->appCats[$cat][$i]) ) break;
       $apps[] = $this->data->application[$this->appCats[$cat][$i]];
+    }
+    return $apps;
+  }
+
+  /** Get all apps by a given author
+   * @method getAppsByAuthor
+   * @param str author name of the author
+   * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
+   * @return array apps array[0..n] of object app
+   * @see getAppList
+   */
+  public function getAppsByAuthor($author,$start=0,$limit=null) {
+    if ( empty($this->autNames) ) $this->index();
+    if ( $limit===null ) $limit = $this->limit;
+    if ( $limit==0 ) $max = count($this->autNames[$author]);
+    else $max = $start + $limit;
+    $apps = []; $i=0;
+    foreach( $this->autNames[$author] as $aut ) {
+      if ( $i==$max ) break;
+      if ( $i < $start ) continue;
+      $apps[] = $this->data->application[$aut];
     }
     return $apps;
   }
