@@ -35,6 +35,10 @@ class fdroid extends xmlconv {
    * @attribute protected array cats
    */
   protected $cats;
+  /** Available/used licenses
+   * @attribute protected array licenses
+   */
+  protected $licenses = [];
 
   /** package_names and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
@@ -66,6 +70,11 @@ class fdroid extends xmlconv {
    * @attribute protected autNames
    */
   protected $autNames = [];
+  /** licenses with the index keys of apps (in data->application) being in them.
+   *  This is an empty array unless explicitly filled by self::index
+   * @attribute appLicenses
+   */
+  protected $appLicenses = [];
   /** categories with the index keys of apps (in data->application) being in them.
    *  This is an empty array unless explicitly filled by self::index
    * @attribute appCats
@@ -144,6 +153,14 @@ class fdroid extends xmlconv {
     return $this->cats;
   }
 
+  /** Get used licenses
+   * @method getLicenses
+   * @return array licenses array[0..n] of string, alphabetically sorted
+   */
+  public function getLicenses() {
+    return $this->licenses;
+  }
+
   /** add some indexes on the app list for easier access
    * @method index
    */
@@ -159,6 +176,11 @@ class fdroid extends xmlconv {
       if ( isset($app->author) ) {
         if ( !isset($this->autNames[$app->author]) ) $this->autNames[$app->author] = [];
         $this->autNames[$app->author][] = $key;
+      }
+      if ( isset($app->license) ) {
+        if ( !isset($this->appLicenses[$app->license]) ) $this->appLicenses[$app->license] = [];
+        $this->appLicenses[$app->license][] = $key;
+        $this->licenses[] = $app->license;
       }
       // now walk get the last modification (i.e. "app update") of the newest file
       if ( is_array($app->package) ) {
@@ -177,6 +199,8 @@ class fdroid extends xmlconv {
       if ( $this->ftsEnabled ) $this->ftsIndex[$key] = strtolower(json_encode($app));
     }
     krsort($this->appBuilds); // newest first
+    $this->licenses = array_unique($this->licenses);
+    sort($this->licenses);
   }
 
   /** Get the entire applist as-is (i.e. ordered by names)
@@ -247,6 +271,27 @@ class fdroid extends xmlconv {
       if ( $i==$max ) break;
       if ( $i < $start ) continue;
       $apps[] = $this->data->application[$aut];
+    }
+    return $apps;
+  }
+
+  /** Get all apps using a given license
+   * @method getAppsByLicense
+   * @param string license
+   * @param optional int start position to start with when paging. Default is 0 (the first app).
+   * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
+   * @return array apps array[0..n] of object app
+   * @see getAppList
+   */
+  public function getAppsByLicense($license,$start=0,$limit=null) {
+    if (empty ($this->appLicenses) ) $this->index();
+    if ( $limit===null ) $limit = $this->limit;
+    if ( $limit==0 ) $max = count($this->appLicenses[$license]);
+    else $max = $start + $limit;
+    $apps = [];
+    for ($i=$start;$i<=$max;++$i) {
+      if ( $i==$max || !isset($this->appLicenses[$license][$i]) ) break;
+      $apps[] = $this->data->application[$this->appLicenses[$license][$i]];
     }
     return $apps;
   }
