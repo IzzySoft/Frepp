@@ -10,7 +10,7 @@ require_once('xmlconv.class.php');
 class fdroid extends xmlconv {
 
   /** directory the repo's files reside in
-   * @property string repoDir
+   * @property protected string repoDir
    */
   protected $repoDir;
 
@@ -47,22 +47,22 @@ class fdroid extends xmlconv {
   protected $appIds = [];
   /** app_names and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
-   * @attribute appNames
+   * @attribute protected appNames
    */
   protected $appNames = [];
   /** app_lastbuild and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
-   * @attribute appBuilds
+   * @attribute protected appBuilds
    */
   protected $appBuilds = [];
   /** app_repoAdded and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
-   * @attribute appAddeds
+   * @attribute protected appAddeds
    */
   protected $appAddeds = [];
   /** app_repoUpdate and their index key in data->application.
    *  This is an empty array unless explicitly filled by self::index
-   * @attribute appUpdates
+   * @attribute protected appUpdates
    */
   protected $appUpdates = [];
   /** app_authors and their index key in data->application.
@@ -72,23 +72,28 @@ class fdroid extends xmlconv {
   protected $autNames = [];
   /** licenses with the index keys of apps (in data->application) being in them.
    *  This is an empty array unless explicitly filled by self::index
-   * @attribute appLicenses
+   * @attribute protected appLicenses
    */
   protected $appLicenses = [];
   /** categories with the index keys of apps (in data->application) being in them.
    *  This is an empty array unless explicitly filled by self::index
-   * @attribute appCats
+   * @attribute protected appCats
    */
   protected $appCats = [];
 
   /** How many apps we have.
    *  This is basically a shortcut to self::data->repo->{'@attributes'}->appcount
-   * @attribute int appcount
+   * @attribute protected int appcount
    */
   protected $appcount;
 
+  /** number of hits if we hadn't limited search results
+   * @attribute protected int fullHits
+   */
+  protected $fullHits = 0;
+
   /** Default limit for pager (how many entries to return at maximum)
-   * @attribute pprotected pager
+   * @attribute protected limit
    */
   protected $limit = 0;
 
@@ -104,6 +109,7 @@ class fdroid extends xmlconv {
     sort($this->cats);
     $this->data->repo->{'@attributes'}->appcount = count($this->data->application);
     $this->appcount = $this->data->repo->{'@attributes'}->appcount;
+    $this->fullHits = $this->appcount;
     $this->setLimit($limit);
   }
 
@@ -203,6 +209,14 @@ class fdroid extends xmlconv {
     sort($this->licenses);
   }
 
+  /** Get number of results regardless of $limit used
+   * @method getFullHits
+   * @return int fullHits number of available results to the last query if no $limit applied
+   */
+  function getFullHits() {
+    return $this->fullHits;
+  }
+
   /** Get the entire applist as-is (i.e. ordered by names)
    * @method getAppList
    * @param optional int start position to start with when paging. Default is 0 (the first app).
@@ -219,8 +233,9 @@ class fdroid extends xmlconv {
    *                   → added, lastupdated: relates to the repo – no details of the file date (need to take that from files)
    */
   function getAppList($start=0,$limit=null) {
+    $this->fullHits = $this->appcount;
     if ( $limit===null ) $limit = $this->limit;
-    if ( $limit==0 && $start==0 ) return $this->data->application;
+    if ( $limit==0 && $start==0 ) return $this->data->application; // get all
     if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
     $apps = [];
@@ -240,15 +255,16 @@ class fdroid extends xmlconv {
    * @see getAppList
    */
   function getAppsByCat($cat,$start=0,$limit=null) {
+    $this->fullHits = count($this->appCats[$cat]);
     if ( !in_array($cat,$this->cats) ) return array();
     if ( empty($this->appIds) ) $this->index();
     if ( $limit===null ) $limit = $this->limit;
     if ( $limit==0 ) $max = count($this->appCats[$cat]);
     else $max = $start + $limit;
     $apps = [];
-    for ($i=$start;$i<=$max;++$i) {
-      if ( $i==$max || !isset($this->appCats[$cat][$i]) ) break;
-      $apps[] = $this->data->application[$this->appCats[$cat][$i]];
+    for ($i=$start;$i<=$max,$i<count($this->appCats[$cat]);++$i) {
+      if ( $i>=$max ) break;
+      else $apps[] = $this->data->application[$this->appCats[$cat][$i]];
     }
     return $apps;
   }
@@ -266,11 +282,12 @@ class fdroid extends xmlconv {
     if ( $limit===null ) $limit = $this->limit;
     if ( $limit==0 ) $max = count($this->autNames[$author]);
     else $max = $start + $limit;
+    $this->fullHits = 0;
     $apps = []; $i=0;
     foreach( $this->autNames[$author] as $aut ) {
-      if ( $i==$max ) break;
-      if ( $i < $start ) continue;
-      $apps[] = $this->data->application[$aut];
+      if ( $i>=$max ) ++$this->fullHits;
+      elseif ( $i < $start ) { ++$this->fullHits; continue; }
+      else { $apps[] = $this->data->application[$aut]; ++$this->fullHits; }
     }
     return $apps;
   }
@@ -288,10 +305,11 @@ class fdroid extends xmlconv {
     if ( $limit===null ) $limit = $this->limit;
     if ( $limit==0 ) $max = count($this->appLicenses[$license]);
     else $max = $start + $limit;
+    $this->fullHits = count($this->appLicenses[$license]);
     $apps = [];
-    for ($i=$start;$i<=$max;++$i) {
-      if ( $i==$max || !isset($this->appLicenses[$license][$i]) ) break;
-      $apps[] = $this->data->application[$this->appLicenses[$license][$i]];
+    for ($i=$start;$i<=$max,$i<count($this->appLicenses[$license]);++$i) {
+      if ( $i>=$max ) break;
+      else { $apps[] = $this->data->application[$this->appLicenses[$license][$i]]; }
     }
     return $apps;
   }
@@ -308,14 +326,15 @@ class fdroid extends xmlconv {
     if ( empty($this->appIds) ) $this->index();
     if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
+    $this->fullHits = 0;
     $i = 0;
     $apps = [];
     foreach($list as $d=>$a) {
       if ( strtotime($d) >= strtotime($date) ) foreach($a as $b) {
         ++$i;
-        if ( $i<=$start ) continue;
-        if ( $i>$max ) break 2;
-        $apps[] = $this->data->application[$b];
+        if ( $i<=$start ) { ++$this->fullHits; continue; }
+        elseif ( $i>$max ) ++$this->fullHits;
+        else { $apps[] = $this->data->application[$b]; ++$this->fullHits; }
       }
       else continue;
     }
@@ -372,6 +391,7 @@ class fdroid extends xmlconv {
    * @see getAppList
    */
   public function searchApps($keyword,$start=0,$limit=null) {
+    $this->fullHits = 0;
     if ( !$this->ftsEnabled ) return array(); // not indexed, no search
     if ( empty($this->ftsIndex) ) $this->index();
     if ( $limit===null ) $limit = $this->limit;
@@ -381,14 +401,18 @@ class fdroid extends xmlconv {
     $apps = [];
     $i=0;
     foreach ($this->ftsIndex as $key=>$val) {
-      if ( $i==$max || $i==$this->appcount ) break;
-      if (strpos($val,$keyword)!==false) {
+      if ( $i==$this->appcount ) break;
+      elseif ( $i>=$max && strpos($val,$keyword)!==false ) { ++$i; ++$this->fullHits; }
+      elseif (strpos($val,$keyword)!==false) {
         if ( $i<$start ) {
           ++$i;
+          ++$this->fullHits;
           continue;
+        } else {
+          $apps[] = $this->data->application[$key];
+          ++$i;
+          ++$this->fullHits;
         }
-        $apps[] = $this->data->application[$key];
-        ++$i;
       }
     }
     return $apps;
@@ -404,7 +428,8 @@ class fdroid extends xmlconv {
    * @return array apps array[0..n] of object app
    * @see getAppList
    */
-  public function intersect($arr1,$arr2) {
+  public function intersect($arr1,$arr2,$start=0,$limit=null) {
+    if ( $limit===null ) $limit = $this->limit;
     if ( empty($arr1) || empty($arr2) ) return [];
     $apps = [];
     foreach($arr1 as $a) {
@@ -412,7 +437,9 @@ class fdroid extends xmlconv {
         if ( $a->id == $b->id ) $apps[] = $a;
       }
     }
-    return $apps;
+    $this->fullHits = count($apps);
+    if ($start==0 && $limit==0) return $apps;
+    else return array_slice($apps,$start,$start+$limit);
   }
 
   /** Get data for an app by its package_name
