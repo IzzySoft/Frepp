@@ -34,7 +34,7 @@ class fdroid extends xmlconv {
   /** Available/used categories
    * @attribute protected array cats
    */
-  protected $cats;
+  protected $cats = [];
   /** Available/used licenses
    * @attribute protected array licenses
    */
@@ -93,24 +93,61 @@ class fdroid extends xmlconv {
   protected $fullHits = 0;
 
   /** Default limit for pager (how many entries to return at maximum)
-   * @attribute protected limit
+   * @attribute protected int limit
    */
   protected $limit = 0;
+
+  /** Do we only have the XML file of some remote repo here – or a complete local repo?
+   *  This will be determined on the existence of the metadata directory.
+   * @attribute protexted bool xml_only
+   */
+  protected $xml_only = false;
 
   /** Constructor: Load the repo
    * @constructor fdroid
    * @param optional int limit how many apps to return. This sets the default used by the apps.
-   * @param string dir the repository's dir (where the index.xml resides)
+   * @param string path the repository's dir (where the index.xml resides) or the full path of the XML file itself
    */
-  public function __construct($dir, $limit=0) {
-    $this->repoDir = $dir;
-    $this->data = $this->xml2obj($dir.'/index.xml');
-    $this->cats = explode("\n",trim(file_get_contents($dir.'/categories.txt')));
-    sort($this->cats);
+  public function __construct($path, $limit=0) {
+    if ( is_dir($path) ) {
+      $this->repoDir = $path;
+      $file = $path.'/index.xml';
+    } elseif ( is_file($path) ) {
+      $file = $path;
+      $this->repoDir = dirname($path);
+    } else {
+      trigger_error($path." is not a valid file or directory. Cannot initialize repo.",E_USER_ERROR);
+      return;
+    }
+    ( is_dir(dirname($this->repoDir).'/metadata') ) ? $this->xml_only = false : $this->xml_only = true;
+    $this->data = $this->xml2obj($file);
+    if ( file_exists($this->repoDir.'/categories.txt') ) {
+      $this->cats = explode("\n",trim(file_get_contents($this->repoDir.'/categories.txt')));
+      sort($this->cats);
+    }
     $this->data->repo->{'@attributes'}->appcount = count($this->data->application);
     $this->appcount = $this->data->repo->{'@attributes'}->appcount;
     $this->fullHits = $this->appcount;
     $this->setLimit($limit);
+  }
+
+  /** Override auto-detection on whether this is a full local repo
+   * @method public setXmlOnly
+   * @param in bool bool Do we just have the XML of some (remote) repo (true), or all APKs in the same place as well (false)?
+   * @see self::xml_only
+   */
+  public function setXmlOnly($bool) {
+    $this->xml_only = (bool) $bool;
+  }
+
+  /** Check the current setting of xml_only
+   * @method getXmlOnly
+   * @return bool xml_only
+   * @see self::setXmlOnly
+   * @see self::xml_only
+   */
+  public function getXmlOnly() {
+    return $this->xml_only;
   }
 
   /** Set the default pager limit
@@ -189,7 +226,8 @@ class fdroid extends xmlconv {
         $this->licenses[] = $app->license;
       }
       // now walk get the last modification (i.e. "app update") of the newest file
-      if ( is_array($app->package) ) {
+      if ( $this->xml_only ) $this->data->application[$key]->lastbuild = null;
+      elseif ( is_array($app->package) ) {
         for($i=0;$i<count($app->package);++$i) $this->data->application[$key]->package[$i]->built = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package[$i]->apkname));
         $this->data->application[$key]->lastbuild = $app->package[0]->built;
       } else {

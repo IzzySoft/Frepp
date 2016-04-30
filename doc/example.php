@@ -4,14 +4,16 @@
  * pretty-formatted output – just some simple examples to get you started.
  */
 
-// First, we need to include the class file
-require_once('../lib/fdroid.class.php');
+// First, we need to include the class file. Assuming it's in your include path:
+require_once('fdroid.class.php');
 
 // Now we create an instance of the class. As parameters this expects the path
 // where your repository's index.xml resides, and a default value for the
 // "pager" (how many items per page you want to display). You will need to
 // adjust at least the first parameter if you want to see the whole thing
-// in action.
+// in action. Note the "path" can be a directory (where the 'index.xml' will
+// be expected in) – or the '/full/path/to/index.xml' including the file
+// name (in case you just downloaded the index of a remote repo).
 $fdroid = new fdroid('./repo',10);
 
 // Now lets see what repo we've got here:
@@ -21,6 +23,7 @@ $meta = $fdroid->getMeta();
 echo 'Repository "'.$meta->name.'" ('.$meta->url.") offers ".$meta->appcount." apps.\n";
 
 // Wanna see what categories are covered?
+// (not available if you just have the 'index.xml' of some remote repo)
 $cats = $fdroid->getCats();
 echo "The following categories are covered: ".implode(', ',$cats)."\n";
 
@@ -74,6 +77,5 @@ echo count($apps)." apps without category have been added since March 10, 2016.\
 // * the category "None" is a special one holding all apps without category
 // * note I've added $start = $limit = 0 to the "inner calls". Paging will be
 //   done in the "intersect()" method.
-// * $fdroid->
 exit;
 ?>
