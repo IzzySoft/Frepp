@@ -488,7 +488,7 @@ class fdroid extends xmlconv {
    */
   public function getAppById($id) {
     if ( empty($this->appIds) ) $this->index();
-    if ( empty($this->appIds[$id]) || !isset($this->data->application[$this->appIds[$id]]) ) return new stdClass();
+    if ( !isset($this->appIds[$id]) || !isset($this->data->application[$this->appIds[$id]]) ) return new stdClass();
     return $this->data->application[$this->appIds[$id]];
   }
 
