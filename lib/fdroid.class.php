@@ -240,7 +240,7 @@ class fdroid extends xmlconv {
       $this->appAddeds[$app->added][] = $key;
       if ( !isset($this->appUpdates[$app->added]) ) $this->appUpdates[$app->added] = [];
       $this->appUpdates[$app->lastupdated][] = $key;
-      if ( $this->ftsEnabled ) $this->ftsIndex[$key] = $app->summary.strip_tags($app->desc);
+      if ( $this->ftsEnabled ) $this->ftsIndex[$key] = strtolower($app->summary.strip_tags($app->desc));
     }
     krsort($this->appBuilds); // newest first
     $this->licenses = array_unique($this->licenses);
