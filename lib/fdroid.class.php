@@ -211,6 +211,10 @@ class fdroid extends xmlconv {
     foreach($this->data->application as $key=>$app) {
       unset($this->data->application[$key]->{'@attributes'}); // obsolete, only id
       $this->appIds[$app->id] = $key;
+      if ( !is_string($app->name) ) { // buggy APK MetaData work-around
+        $app->name = $app->id;
+        // $this->data->application[$key]->name = $app->id; // done implicitly with previous line
+      }
       $this->appNames[$app->name] = $key;
       foreach(explode(',',$app->categories) as $ac) {
         if ( !isset($this->appCats[$ac])) $this->appCats[$ac] = [];
