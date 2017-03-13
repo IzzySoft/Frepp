@@ -240,6 +240,17 @@ class fdroid extends xmlconv {
       }
       if ( !isset($this->appBuilds[$app->lastbuild]) ) $this->appBuilds[$app->lastbuild] = [];
       $this->appBuilds[$app->lastbuild][] = $key;
+      if ( !$this->xml_only ) { // check if AppAdded differs from repodata
+        $metafile = dirname($this->repoDir).'/metadata/'.$app->id.'.txt';
+        if ( file_exists($metafile) ) {
+          if ( preg_match('!^AppAdded:(\d{4}-\d{2}-\d{2})!ms',file_get_contents($metafile),$match) ) {
+            $app->added = $match[1];
+          } else {
+            $metadate = date('Y-m-d',filemtime($metafile));
+            if ( $metadate < $app->added ) $app->added = $metadate;
+          }
+        }
+      }
       if ( !isset($this->appAddeds[$app->added]) ) $this->appAddeds[$app->added] = [];
       $this->appAddeds[$app->added][] = $key;
       if ( !isset($this->appUpdates[$app->added]) ) $this->appUpdates[$app->added] = [];
