@@ -27,6 +27,11 @@ that name, I decided for something simpler: Frepp, which means as much as
   since the categories.txt won't be available, it cannot be evaluated either).
   A quick test with F-Droid's own `index.xml` (1,700+ apps) showed speed still
   seems reasonable.
+* Special addendum: If e.g. with a major update of fdroidserver, its app cache
+  might get rebuild, that means the date an app was added to the repo gets lost.
+  To take caution for that, you can keep that in the `Maintainer Notes` block
+  using a line in the format `AppAdded:YYYY-MM-DD`. The library checks that and
+  takes it with preference.
 
 ### License
 This project uses the GPLv2 license as stated in the [LICENSE](LICENSE) file.
