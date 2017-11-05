@@ -105,8 +105,8 @@ class fdroid extends xmlconv {
 
   /** Constructor: Load the repo
    * @constructor fdroid
-   * @param optional int limit how many apps to return. This sets the default used by the apps.
    * @param string path the repository's dir (where the index.xml resides) or the full path of the XML file itself
+   * @param optional int limit how many apps to return. This sets the default used by the apps.
    */
   public function __construct($path, $limit=0) {
     if ( is_dir($path) ) {
@@ -274,6 +274,7 @@ class fdroid extends xmlconv {
    * @method getAppList
    * @param optional int start position to start with when paging. Default is 0 (the first app).
    * @param optional int limit how many apps to return. Default is self::limit (set by constructor or self::setLimit).
+   * @param optional str order field to order the list by. Permitted values: name,added, updated. Default: name.
    * @return array apps array[0..n] of object app
    * @verbatim
    *   each app with:  id (package_name), added (date), lastupdated (date), name (app_name), summary, icon, desc, license,
@@ -285,10 +286,12 @@ class fdroid extends xmlconv {
    *                   permissions (CSV), nativecode (CSV), features (CSV)
    *                   → added, lastupdated: relates to the repo – no details of the file date (need to take that from files)
    */
-  function getAppList($start=0,$limit=null) {
+  function getAppList($start=0,$limit=null,$order='name') {
+    $order = strtolower($order);
+    if ( !in_array($order,['name','added','updated']) ) $order = 'name';
     $this->fullHits = $this->appcount;
     if ( $limit===null ) $limit = $this->limit;
-    if ( $limit==0 && $start==0 ) return $this->data->application; // get all
+    if ( $limit==0 && $start==0 ) { $apps = $this->data->application; goto sorter; } // get all
     if ( $limit==0 ) $max = $this->appcount;
     else $max = $start + $limit;
     $apps = [];
@@ -296,6 +299,23 @@ class fdroid extends xmlconv {
       if ( $i==$max || $i==$this->appcount ) break;
       $apps[] = $this->data->application[$i];
     }
+    // sorting, if specified:
+    sorter:
+    if ( $order=='name' ) return $apps; // nothing to sort
+    switch($order) {
+      case 'added'  : $orderby = 'added'; break;
+      case 'updated': $orderby = 'lastupdated'; break;
+      case 'name':
+      default: $orderby = 'name'; break; // just in case
+    }
+    $sorter = []; $sorted = [];
+    foreach ($apps as $app) {
+      $sorted[] = ['id'=>$app->id, $orderby=>$app->$orderby, 'app'=>$app];
+      $sorter[$app->id] = $app->$orderby;
+    }
+    array_multisort($sorter,SORT_ASC,$sorted);
+    $apps = []; // reset
+    foreach($sorted as $s) $apps[] = $s['app'];
     return $apps;
   }
 
