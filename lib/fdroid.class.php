@@ -255,7 +255,12 @@ class fdroid extends xmlconv {
       $this->appAddeds[$app->added][] = $key;
       if ( !isset($this->appUpdates[$app->added]) ) $this->appUpdates[$app->added] = [];
       $this->appUpdates[$app->lastupdated][] = $key;
-      if ( $this->ftsEnabled ) $this->ftsIndex[$key] = strtolower($app->summary.strip_tags($app->desc));
+      if ( !property_exists($app,'summary') || !is_string($app->summary) ) $app->summary = ''; // work around bug in F-Droid's own repo XML
+      if ( !property_exists($app,'desc')    || !is_string($app->desc) )    $app->desc    = '';
+      if ( !property_exists($app,'summary') ) $app->summary = ''; // work around bug in F-Droid's own repo XML
+      if ( $this->ftsEnabled ) {
+        $this->ftsIndex[$key] = strtolower($app->summary.strip_tags($app->desc));
+      }
     }
     krsort($this->appBuilds); // newest first
     $this->licenses = array_unique($this->licenses);
