@@ -107,8 +107,9 @@ class fdroid extends xmlconv {
    * @constructor fdroid
    * @param string path the repository's dir (where the index.xml resides) or the full path of the XML file itself
    * @param optional int limit how many apps to return. This sets the default used by the apps.
+   * @param optional string catfile full path to categories.txt. If not given, the list won't support categories.
    */
-  public function __construct($path, $limit=0) {
+  public function __construct($path, $limit=0, $catfile=null) {
     if ( is_dir($path) ) {
       $this->repoDir = $path;
       $file = $path.'/index.xml';
@@ -121,8 +122,9 @@ class fdroid extends xmlconv {
     }
     ( is_dir(dirname($this->repoDir).'/metadata') ) ? $this->xml_only = false : $this->xml_only = true;
     $this->data = $this->xml2obj($file);
-    if ( file_exists($this->repoDir.'/categories.txt') ) {
-      $this->cats = explode("\n",trim(file_get_contents($this->repoDir.'/categories.txt')));
+    if (!$catfile) $catfile = $this->repoDir.'/categories.txt';
+    if ( file_exists($catfile) ) {
+      $this->cats = explode("\n",trim(file_get_contents($catfile)));
       sort($this->cats);
     }
     $this->data->repo->{'@attributes'}->appcount = count($this->data->application);
