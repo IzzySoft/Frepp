@@ -1,0 +1,17 @@
+{
+  "name": "fdroid/php-fdroid",
+  "license": "GPL-2.0-only",
+  "description": "F-Droid repo parser library for PHP",
+  "keywords": [
+    "F-Droid"
+  ],
+  "homepage": "https://gitlab.com/fdroid/php-fdroid",
+  "support": {
+    "issues": "https://gitlab.com/fdroid/php-fdroid/issues"
+  },
+  "autoload": {
+    "classmap": [
+      "lib/"
+    ]
+  }
+}
