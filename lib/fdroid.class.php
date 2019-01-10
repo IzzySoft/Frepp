@@ -218,7 +218,8 @@ class fdroid extends xmlconv {
         // $this->data->application[$key]->name = $app->id; // done implicitly with previous line
       }
       $this->appNames[$app->name] = $key;
-      foreach(explode(',',$app->categories) as $ac) {
+      if ( !property_exists($app,'categories') ) trigger_error('Category missing for '.$app->id,E_USER_NOTICE);
+      else foreach(explode(',',$app->categories) as $ac) {
         if ( !isset($this->appCats[$ac])) $this->appCats[$ac] = [];
         $this->appCats[$ac][] = $key;
       }
