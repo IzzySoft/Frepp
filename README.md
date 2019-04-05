@@ -35,3 +35,10 @@ that name, I decided for something simpler: Frepp, which means as much as
 
 ### License
 This project uses the GPLv2 license as stated in the [LICENSE](LICENSE) file.
+
+
+### Contribute
+You like this library and want to contribute?
+
+* Pull/Merge Requests are welcome!
+* Motivate me e.g. by sending me some mBTC to `1FsfvUGUpoPkLvJboKAnuBXHZ1zN3hbBL1` :)
