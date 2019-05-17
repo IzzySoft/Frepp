@@ -105,7 +105,7 @@ class fdroid extends xmlconv {
 
   /** Constructor: Load the repo
    * @constructor fdroid
-   * @param string path the repository's dir (where the index.xml resides) or the full path of the XML file itself
+   * @param string path the repository's dir (where the index.xml resides) or the full path of the XML/JSON file itself
    * @param optional int limit how many apps to return. This sets the default used by the apps.
    * @param optional string catfile full path to categories.txt. If not given, the list won't support categories.
    */
@@ -121,14 +121,19 @@ class fdroid extends xmlconv {
       return;
     }
     ( is_dir(dirname($this->repoDir).'/metadata') ) ? $this->xml_only = false : $this->xml_only = true;
-    $this->data = $this->xml2obj($file);
+    switch ( pathinfo($file, PATHINFO_EXTENSION) ) {
+      case 'xml': $this->loadXml($file); break;
+      case 'json': $this->loadJSON($file); break;
+      case 'jar':  // pathinfo($file, PATHINFO_BASENAME) == index-v1.jar -- oder in loadJSON im ZIP auf index-v1.json prüfen
+      default: trigger_error("Specified index file '${file}' not supported. Cannot initialize repo.",E_USER_ERROR);
+    }
     if (!$catfile) $catfile = $this->repoDir.'/categories.txt';
     if ( file_exists($catfile) ) {
       $this->cats = explode("\n",trim(file_get_contents($catfile)));
       sort($this->cats);
     }
-    $this->data->repo->{'@attributes'}->appcount = count($this->data->application);
-    $this->appcount = $this->data->repo->{'@attributes'}->appcount;
+    $this->data->repo->appcount = count($this->data->application);
+    $this->appcount = $this->data->repo->appcount;
     $this->fullHits = $this->appcount;
     $this->setLimit($limit);
   }
@@ -150,6 +155,99 @@ class fdroid extends xmlconv {
    */
   public function getXmlOnly() {
     return $this->xml_only;
+  }
+
+  /** Load repository data from index.xml
+   * @method protected loadXml
+   * @param in string file full file name (with path) of the index.xml to load
+   */
+  protected function loadXml($file) {
+    $this->data = $this->xml2obj($file);
+    $this->data->repo->{'@attributes'}->description = $this->data->repo->description;
+    $this->data->repo = $this->data->repo->{'@attributes'};
+  }
+
+  /** Set property depending if another property exist in a reference object (helper to loadJSON)
+   * @method protected _setPropConditional
+   * @param ref object obj     target object
+   * @param string name     target property
+   * @param object ref      reference object
+   * @param string refname  reference property
+   * @param optional mixed default   default if reference property is not set (null for optional properties)
+   */
+  protected function _setPropConditional(&$obj,$name,$ref,$refname,$default='') {
+    if ( property_exists($ref,$refname) ) $obj->{$name} = $ref->{$refname};
+    elseif ($default!==null) $obj->{$name} = $default;
+  }
+
+  /** Load repository data from index-v1.json (and convert to "old format")
+   * @method protected loadJSON
+   * @param in string file full file name (with path) of the index-v1.json to load
+   */
+  protected function loadJSON($file) {
+    $data = json_decode( file_get_contents($file) );
+    $this->data = new stdClass();
+    $this->data->repo = $data->repo;
+    $this->data->repo->url = &$this->data->repo->address;
+    $this->data->repo->pubkey = '';
+
+    $this->data->application = [];
+    foreach ( $data->apps as $app ) {
+      $o = new stdClass();
+      $o->id = $app->packageName;
+      $o->added = date('Y-m-d',$app->added/1000);
+      $o->lastupdated = date('Y-m-d',$app->lastUpdated/1000);
+      foreach(['name','summary','icon','license','changelog'] as $f) {
+        if (property_exists($app,$f)) $o->{$f} = $app->{$f};
+        else $o->{$f} = '';
+      }
+      $this->_setPropConditional($o,'desc',$app,'description');
+      $this->_setPropConditional($o,'source',$app,'sourceCode');
+      $this->_setPropConditional($o,'tracker',$app,'issueTracker');
+      $this->_setPropConditional($o,'web',$app,'webSite');
+      $this->_setPropConditional($o,'author',$app,'authorName',null);
+      $this->_setPropConditional($o,'email',$app,'authorEmail',null);
+      if (property_exists($app,'antiFeatures')) $o->antifeatures = implode(',',$app->antiFeatures);
+      if (property_exists($app,'categories')) {
+        $o->categories = implode(',',$app->categories);
+        $o->category = $app->categories[0];
+      }
+      $this->_setPropConditional($o,'donate',$app,'donate',null);
+      $this->_setPropConditional($o,'flattr',$app,'flattrID',null);
+      $this->_setPropConditional($o,'liberapay',$app,'liberapayID',null);
+      $this->_setPropConditional($o,'bitcoin',$app,'bitcoin',null);
+      $this->_setPropConditional($o,'litecoin',$app,'litecoin',null);
+
+      // properties new with JSON which didn't exist before: we take this 1:1 as no backwards compatibility exists anyway
+      $this->_setPropConditional($o,'suggestedVersionCode',$app,'suggestedVersionCode',null);
+      $this->_setPropConditional($o,'localized',$app,'localized',null);
+
+      // packages
+      if ( property_exists($data->packages,$o->id) ) { // there should be at least one, but who knows?
+        $ps = [];
+        foreach ( $data->packages->{$o->id} as $pkg ) {
+          $p = new stdClass();
+          $p->version = $pkg->versionName;
+          $p->versioncode = $pkg->versionCode;
+          $p->apkname = $pkg->apkName;
+          foreach(['hash','size','sig'] as $f) $p->{$f} = $pkg->{$f};
+          $p->sdkver = $pkg->minSdkVersion;
+          $this->_setPropConditional($p,'targetSdkVersion',$pkg,'targetSdkVersion',null);
+          // JSON only: signer
+          $p->added = date('Y-m-d',$pkg->added);
+          $perms = ''; if ( property_exists($pkg,'uses-permission') ) {
+            foreach ($pkg->{'uses-permission'} as $perm) $perms .= ','.$perm[0];
+            if (strlen($perms)) $perms = substr($perms,1);
+          }
+          $p->permissions = $perms;
+          $ps[] = $p;
+        }
+        if ( count($ps) == 1 ) $o->package = $ps[0];
+        else $o->package = $ps;
+      }
+
+      $this->data->application[] = $o;
+    }
   }
 
   /** Set the default pager limit
@@ -185,7 +283,7 @@ class fdroid extends xmlconv {
    * @return object metaData. properties: strings icon (fileName), name, pubkey, timestamp, url, version, int appcount, str description
    */
   public function getMeta() {
-    $meta = $this->data->repo->{'@attributes'};
+    $meta = $this->data->repo;
     $meta->description = $this->data->repo->description;
     return $meta;
   }
