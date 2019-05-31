@@ -97,11 +97,11 @@ class fdroid extends xmlconv {
    */
   protected $limit = 0;
 
-  /** Do we only have the XML file of some remote repo here – or a complete local repo?
+  /** Do we only have the XML/JSON file of some remote repo here – or a complete local repo?
    *  This will be determined on the existence of the metadata directory.
-   * @attribute protexted bool xml_only
+   * @attribute protexted bool index_only
    */
-  protected $xml_only = false;
+  protected $index_only = false;
 
   /** Constructor: Load the repo
    * @constructor fdroid
@@ -120,7 +120,7 @@ class fdroid extends xmlconv {
       trigger_error($path." is not a valid file or directory. Cannot initialize repo.",E_USER_ERROR);
       return;
     }
-    ( is_dir(dirname($this->repoDir).'/metadata') ) ? $this->xml_only = false : $this->xml_only = true;
+    ( is_dir(dirname($this->repoDir).'/metadata') ) ? $this->index_only = false : $this->index_only = true;
     switch ( pathinfo($file, PATHINFO_EXTENSION) ) {
       case 'xml': $this->loadXml($file); break;
       case 'json': $this->loadJSON($file); break;
@@ -139,22 +139,44 @@ class fdroid extends xmlconv {
   }
 
   /** Override auto-detection on whether this is a full local repo
+   * @method public setIndexOnly
+   * @param in bool bool Do we just have the XML/JSON of some (remote) repo (true), or all APKs in the same place as well (false)?
+   * @see self::index_only
+   */
+  public function setIndexOnly($bool) {
+    $this->index_only = (bool) $bool;
+  }
+
+  /** Check the current setting of index_only
+   * @method getIndexOnly
+   * @return bool index_only
+   * @see self::setIndexOnly
+   * @see self::index_only
+   */
+  public function getIndexOnly() {
+    return $this->index_only;
+  }
+
+
+  /** Override auto-detection on whether this is a full local repo
    * @method public setXmlOnly
    * @param in bool bool Do we just have the XML of some (remote) repo (true), or all APKs in the same place as well (false)?
-   * @see self::xml_only
+   * @see self::index_only self::setIndexOnly
+   * @deprecated use setIndexOnly instead
    */
   public function setXmlOnly($bool) {
-    $this->xml_only = (bool) $bool;
+    $this->setIndexOnly($bool);
   }
 
   /** Check the current setting of xml_only
    * @method getXmlOnly
    * @return bool xml_only
-   * @see self::setXmlOnly
-   * @see self::xml_only
+   * @see self::setIndexOnly
+   * @see self::index_only
+   * @deprecated use getIndexOnly instead
    */
   public function getXmlOnly() {
-    return $this->xml_only;
+    return $this->getIndexOnly();
   }
 
   /** Load repository data from index.xml
@@ -234,7 +256,7 @@ class fdroid extends xmlconv {
           $p->sdkver = $pkg->minSdkVersion;
           $this->_setPropConditional($p,'targetSdkVersion',$pkg,'targetSdkVersion',null);
           // JSON only: signer
-          $p->added = date('Y-m-d',$pkg->added);
+          $p->added = date('Y-m-d',$pkg->added/1000);
           $perms = ''; if ( property_exists($pkg,'uses-permission') ) {
             foreach ($pkg->{'uses-permission'} as $perm) $perms .= ','.$perm[0];
             if (strlen($perms)) $perms = substr($perms,1);
@@ -331,7 +353,7 @@ class fdroid extends xmlconv {
         $this->licenses[] = $app->license;
       }
       // now walk get the last modification (i.e. "app update") of the newest file
-      if ( $this->xml_only ) $this->data->application[$key]->lastbuild = null;
+      if ( $this->index_only ) $this->data->application[$key]->lastbuild = null;
       elseif ( is_array($app->package) ) {
         for($i=0;$i<count($app->package);++$i) $this->data->application[$key]->package[$i]->built = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package[$i]->apkname));
         $this->data->application[$key]->lastbuild = $app->package[0]->built;
@@ -341,7 +363,7 @@ class fdroid extends xmlconv {
       }
       if ( !isset($this->appBuilds[$app->lastbuild]) ) $this->appBuilds[$app->lastbuild] = [];
       $this->appBuilds[$app->lastbuild][] = $key;
-      if ( !$this->xml_only ) {
+      if ( !$this->index_only ) {
         $metafile = dirname($this->repoDir).'/metadata/'.$app->id.'.txt';
         if ( file_exists($metafile) ) { // check if AppAdded differs from repodata:
           if ( preg_match('!^AppAdded:(\d{4}-\d{2}-\d{2})!ms',file_get_contents($metafile),$match) ) {
