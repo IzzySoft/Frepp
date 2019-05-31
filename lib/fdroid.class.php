@@ -411,11 +411,15 @@ class fdroid extends xmlconv {
    *   each app with:  id (package_name), added (date), lastupdated (date), name (app_name), summary, icon, desc, license,
    *                   categories (CSV), category (the first one), web + source + tracker + changelog (URLs),
    *                   marketversion (object), marketvercode, antifeatures, requirements ("root"), package (object OR array[0..n] of objects)
-   *                   lastbuild (YYYY-MM-DD; only when indexed)
+   *                   lastbuild (YYYY-MM-DD; only when indexed) [, localized]
    *                   → added, lastupdated: relates to the repo
    *   package object: version, versioncode, apkname (fileName), hash, sig, size (bytes), sdkver, added (date),
    *                   permissions (CSV), nativecode (CSV), features (CSV)
    *                   → added, lastupdated: relates to the repo – no details of the file date (need to take that from files)
+   *   localized object: only available with JSON index, and even there optional. Properties again are objects, going by the
+   *                   names of their resp. languages (e.g. 'en-US', 'de-DE' or even simply 'fr'). Can hold summary, description,
+   *                   featureGraphic, phoneScreenshots and more. The 'localized' object is taken 1:1 from the json_decode()d index.
+   *   NOTE: If an app in a JSON index has localized summary/description, the global summary/description are usually empty.
    */
   function getAppList($start=0,$limit=null,$order='name') {
     $order = strtolower($order);
