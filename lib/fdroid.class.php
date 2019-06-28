@@ -212,6 +212,7 @@ class fdroid extends xmlconv {
     $this->data->repo = $data->repo;
     $this->data->repo->url = &$this->data->repo->address;
     $this->data->repo->pubkey = '';
+    $this->data->repo->timestamp = $this->data->repo->timestamp/1000;
 
     $this->data->application = [];
     foreach ( $data->apps as $app ) {
