@@ -361,6 +361,7 @@ class fdroid extends xmlconv {
         $this->data->application[$key]->lastbuild = date('Y-m-d',filemtime($this->repoDir.'/'.$app->package->apkname));
         $this->data->application[$key]->package->built = $this->data->application[$key]->lastbuild;
       }
+      if ( $app->lastupdated < $this->data->application[$key]->lastbuild ) $app->lastupdated = $this->data->application[$key]->lastbuild; // APK was replaced
       if ( !isset($this->appBuilds[$app->lastbuild]) ) $this->appBuilds[$app->lastbuild] = [];
       $this->appBuilds[$app->lastbuild][] = $key;
       if ( !$this->index_only ) {
