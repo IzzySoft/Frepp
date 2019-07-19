@@ -376,7 +376,7 @@ class fdroid extends xmlconv {
             $metadate = date('Y-m-d',filemtime($metafile));
             if ( $metadate < $app->added ) $app->added = $metadate;
           } // Requires Root:
-          if ( preg_match('!^Requires Root:\s?yes$!ims',file_get_contents($metafile),$match) ) {
+          if ( preg_match("!^Requires ?Root:( ')?yes'?$!ims",file_get_contents($metafile),$match) ) {
             $app->requirements = 'root';
           }
         }
