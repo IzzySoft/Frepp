@@ -366,15 +366,17 @@ class fdroid extends xmlconv {
       if ( !isset($this->appBuilds[$app->lastbuild]) ) $this->appBuilds[$app->lastbuild] = [];
       $this->appBuilds[$app->lastbuild][] = $key;
       if ( !$this->index_only ) {
-        $metafile = dirname($this->repoDir).'/metadata/'.$app->id.'.txt';
-        if ( file_exists($metafile) ) { // check if AppAdded differs from repodata:
-          if ( preg_match('!^AppAdded:(\d{4}-\d{2}-\d{2})!ms',file_get_contents($metafile),$match) ) {
+        if ( file_exists(dirname($this->repoDir).'/metadata/'.$app->id.'.yml') ) $metafile = dirname($this->repoDir).'/metadata/'.$app->id.'.yml';
+        elseif ( file_exists(dirname($this->repoDir).'/metadata/'.$app->id.'.txt') ) $metafile = dirname($this->repoDir).'/metadata/'.$app->id.'.txt';
+        else $metafile = '';
+        if ( !empty($metafile) ) { // get AppAdded and RequiresRoot from repodata:
+          if ( preg_match('!^\s*AppAdded:\s?(\d{4}-\d{2}-\d{2})!ms',file_get_contents($metafile),$match) ) {
             $app->added = $match[1];
           } else {
             $metadate = date('Y-m-d',filemtime($metafile));
             if ( $metadate < $app->added ) $app->added = $metadate;
           } // Requires Root:
-          if ( preg_match('!^Requires Root:yes$!ims',file_get_contents($metafile),$match) ) {
+          if ( preg_match('!^Requires Root:\s?yes$!ims',file_get_contents($metafile),$match) ) {
             $app->requirements = 'root';
           }
         }
